@@ -1,0 +1,33 @@
+---
+- hosts: k8s
+  remote_user: root
+  gather_facts: yes
+  vars_files:
+    - vars/vars.yml
+
+  tasks:
+    - name: obtain old netplan files
+      find:
+        paths: /etc/netplan/
+        patterns: '*.yaml'
+      register: files_to_delete
+    - name: delete old netplan files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      with_items: "{{ files_to_delete.files }}"
+    - name: obtain IP/NETMASK
+      shell: ip address show ens33 | grep inet | sed -n '1p' | awk '{print $2}'
+      register: ip
+    - name: jammy change Dns
+      template:
+        src: template/ubuntu_2204.j2
+        dest: /etc/netplan/00-installer-config.yaml
+      when: ansible_distribution_release == 'jammy'
+    - name: focal change Dns
+      template:
+        src: template/ubuntu_2004.j2
+        dest: /etc/netplan/00-installer-config.yaml
+      when: ansible_distribution_release == 'focal'
+    - name: netplan apply
+      shell: netplan apply

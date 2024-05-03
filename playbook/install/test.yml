@@ -1,0 +1,7 @@
+---
+- hosts: 10.0.0.13
+  remote_user: root
+
+  tasks:
+    - name: "{{ os }}"
+      shell: echo {{ os }}

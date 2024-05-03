@@ -1,0 +1,15 @@
+---
+- hosts: 10.0.0.13
+  remote_user: root
+
+  tasks:
+    - name: add test group->wheel
+      group:
+        name: wheel
+        state: present
+    - name: add sereral users
+      user: name={{ item }} state=present groups=wheel
+      loop:
+        - testuser1
+        - testuser2
+        - testuser3

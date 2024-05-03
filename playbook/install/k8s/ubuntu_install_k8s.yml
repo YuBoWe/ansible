@@ -1,0 +1,188 @@
+---
+- hosts: k8s
+  remote_user: root
+  gather_facts: yes
+  vars_files:
+    - vars/vars.yml
+  tasks:
+  # test
+    - name: remove repeat package
+      file:
+        name: "{{ criDockerdDir }}/cri-dockerd"
+        state: absent
+  # 安装docker-ce
+    - name: remove old docker-ce
+      apt:
+        force_apt_get: yes
+        pkg:
+        - docker-ce
+        - docker
+        - docker-engine
+        - docker.io
+        state: absent
+    - name: remove old gpgfile
+      file:
+        path: /tmp/docker-ce.gpg
+        state: absent
+    - name: install docker depend package
+      apt:
+        force_apt_get: yes
+        update_cache: yes
+        pkg:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg2
+        - software-properties-common
+        state: present
+    - name: get Docker's GPG keys
+      get_url:
+        url: https://mirrors.huaweicloud.com/docker-ce/linux/ubuntu/gpg
+        dest: /tmp/docker-ce.gpg
+    - name: add Docker's GPG keys
+      apt_key:
+        file: /tmp/docker-ce.gpg
+        state: present
+    - name: ubuntu/amd add huawei docker-ce mirror
+      apt_repository:
+        repo: deb [arch=amd64] https://mirrors.huaweicloud.com/docker-ce/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+        filename: docker-ce.list
+      when: ansible_architecture == "x86_64"
+    - name: ubuntu/arm add huawei docker-ce mirror
+      apt_repository:
+        repo: deb [arch=armhf] https://mirrors.huaweicloud.com/docker-ce/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+        filename: docker-ce.list
+      when: ansible_architecture == "aarch64"
+    - name: install docker-ce
+      apt:
+        force_apt_get: yes
+        update_cache: yes
+        name: docker-ce={{ dockerVersion }}
+    # 环境配置
+    - name: Create apps dir
+      file:
+        path: /apps
+        state: directory
+    - name: turn down swap
+      shell: swapoff -a && sed -ri '/swap/s/^/#/' /etc/fstab
+    - name: turn down ufw
+      shell: ufw disable
+      ignore_errors: yes
+    - name: config docker
+      template: 
+        src: templates/daemon.json.j2
+        dest: /etc/docker/daemon.json
+    - name: reload docker
+      service:
+        daemon_reload: true
+    - name: restart docker
+      service:
+        name: docker
+        state: restarted
+        enabled: true
+    # install cri_dockerd
+#    - name: amd get cri_dockerd package
+#      get_url:
+#        url: https://github.com/Mirantis/cri-dockerd/releases/download/v{{ criDockerdVersion }}/cri-dockerd-{{ criDockerdVersion }}.amd64.tgz
+#        dest: "{{ criDockerdDir }}/"
+#      when: ansible_architecture == "x86_64"
+#    - name: arm get cri_dockerd package
+#      get_url:
+#        url: https://github.com/Mirantis/cri-dockerd/releases/download/v{{ criDockerdVersion }}/cri-dockerd-{{ criDockerdVersion }}.arm64.tgz
+#        dest: "{{ criDockerdDir }}/cri-dockerd-{{ criDockerdVersion }}.tgz"
+#      when: ansible_architecture == "aarch64"
+    - name: install conntrack
+      apt:
+        name: conntrack
+        force_apt_get: yes
+        state: present
+    - name: copy cri-dockerd from src to dst
+      copy:
+        src: "binaries/cri-dockerd-{{ criDockerdVersion }}.tgz"
+        dest: "{{ criDockerdDir }}/"
+    - name: Unzip the tar package of cri-dockerd
+      unarchive:
+        src: "{{ criDockerdDir }}/cri-dockerd-{{ criDockerdVersion }}.tgz"
+        dest: "{{ criDockerdDir }}/"
+        remote_src: yes
+    - name: Copy the binary command file of cri-dockerd to PATH
+      copy:
+        src: "{{ criDockerdDir }}/cri-dockerd/cri-dockerd"
+        dest: /usr/bin/
+        remote_src: yes
+        force: yes
+        mode: 0755
+    - name: Create a startup file for cri-dockerd
+      template:
+        src: templates/cri-docker.service.j2
+        dest: /usr/lib/systemd/system/cri-docker.service
+    - name: Create a socket file for cri-dockerd
+      template:
+        src: templates/cri-docker.socket.j2
+        dest: /usr/lib/systemd/system/cri-docker.socket
+    - name: reload service
+      service:
+        daemon_reload: true
+    - name: started cri-dockerd
+      service:
+        name: cri-docker
+        state: restarted
+        enabled: true
+    ## 安装k8s
+    - name: Install others package
+      apt:
+        force_apt_get: yes
+        name: apt-transport-https
+        state: present
+    - name: Get k8s gpg
+      get_url:
+        url: https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg
+        dest: /tmp/kubernetes.gpg
+    - name: add k8s GPG keys
+      apt_key:
+        file: /tmp/kubernetes.gpg
+        state: present
+    - name: ubuntu add aliyun k8s mirror
+      apt_repository:
+        repo: deb https://mirrors.aliyun.com/kubernetes/apt kubernetes-xenial main
+        state: present
+        filename: kubernetes.list
+    - name: Install kubeadm kubelet kubectl
+      apt:
+        force_apt_get: yes
+        update_cache: yes
+        pkg:
+        - "kubelet={{ kubeVersion }}-00"
+        - "kubeadm={{ kubeVersion }}-00"
+        - "kubectl={{ kubeVersion }}-00"
+    - name: Mkdir
+      file:
+        path: /etc/sysconfig
+        state: directory
+        mode: "0755"
+    - name: Set kubelet to cri-dockerd ARGS
+      template:
+        src: templates/kubelet.j2
+        dest: /etc/sysconfig/kubelet
+    - name: Pull K8s Init image
+      shell: kubeadm config images pull --cri-socket unix:///run/cri-dockerd.sock --image-repository=registry.aliyuncs.com/google_containers
+    - name: obtaining pause container version
+      shell: docker images | awk '/pause/{print $2}' | head -n1
+      register: pauseVersion
+    - name: Config cri-docker.service file
+      replace: 
+        path: /lib/systemd/system/cri-docker.service
+        regexp: '^ExecStart.*'
+        replace: "ExecStart=/usr/bin/cri-dockerd --container-runtime-endpoint fd:// --network-plugin=cni --cni-bin-dir=/opt/cni/bin --cni-cache-dir=/var/lib/cni/cache --cni-conf-dir=/etc/cni/net.d --pod-infra-container-image=registry.aliyuncs.com/google_containers/pause:{{ pauseVersion.stdout }}"
+        backup: yes
+    - name: restart docker
+      systemd:
+        name: docker
+        state: restarted
+    - name: reload service of cro-dockerd
+      systemd:
+        name: cri-docker
+        state: restarted
+        daemon_reload: yes

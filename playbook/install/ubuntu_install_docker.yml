@@ -1,0 +1,63 @@
+---
+- hosts: 10.0.0.13
+  remote_user: root
+  gather_facts: yes
+  vars:
+    dockerVersion: 5:25.0.1-1~ubuntu.22.04~{{ ansible_distribution_release }}
+
+
+  tasks:
+    - name: remove old packages
+      apt:
+        pkg:
+        - docker
+        - docker-engine
+        - docker.io
+        - docker-ce
+        state: absent
+    - name: remove old gpgfile
+      file:
+        path: /tmp/gpg
+        state: absent
+    
+    - name: install prepare packages
+      apt:
+        pkg:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg2
+        - software-properties-common
+
+#    - name: gpg
+#      shell: curl -fsSL https://mirrors.huaweicloud.com/docker-ce/linux/ubuntu/gpg | apt-key add -
+#
+    - name: get GPG
+      get_url:
+        url: https://mirrors.huaweicloud.com/docker-ce/linux/ubuntu/gpg
+        dest: /tmp/gpg
+ 
+    - name: add_key
+      apt_key:
+        file: /tmp/gpg
+        state: present
+
+    - name: remove gpgfile
+      file:
+        path: /tmp/gpg
+        state: absent
+        
+    - name: add source list
+      apt_repository:
+        repo: deb [arch=amd64] https://mirrors.huaweicloud.com/docker-ce/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+      when: ansible_architecture == "x86_64"
+    - name: arm add source list
+      shell: echo "deb [arch=armhf] https://mirrors.huaweicloud.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list
+      when: ansible_architecture == "aarch64"
+
+    - name: install dockerd
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+        name: docker-ce={{ dockerVersion }}

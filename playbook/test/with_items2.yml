@@ -1,0 +1,22 @@
+---
+- hosts: 10.0.0.13
+  remote_user: root
+  gather_facts: no
+
+  tasks:
+    - name: add some groups
+      group:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - oo
+        - kk
+        
+    - name: add some users
+      user:
+        name: "{{ item.user }}"
+        group: "{{ item.group }}"
+        state: present
+      loop:
+        - { user: 'oo', group: 'oo' }
+        - { user: 'kk', group: 'kk' }

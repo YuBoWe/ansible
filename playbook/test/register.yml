@@ -1,0 +1,13 @@
+---
+- hosts: 10.0.0.13
+  remote_user: root
+  gather_facts: yes
+
+  tasks:
+    - name: bring os-release
+      shell:
+        cmd: cat /etc/os-release | sed -rn '/^NAME=/p' | awk -F'[="]+' '{print $2}'
+      register: os
+    - name: debug
+      debug:
+        msg: "{{ os.stdout }}"

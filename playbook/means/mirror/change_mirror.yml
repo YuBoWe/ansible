@@ -1,0 +1,32 @@
+---
+- hosts: 10.0.0.13 # amd
+  remote_user: root
+  gather_facts: yes
+  vars:
+    # mirrors.aliyun.com
+    # mirrors.tuna.tsinghua.edu.cn
+    # mirrors.tencent.com
+    # mirrors.huaweicloud.com
+    URL: mirrors.tencent.com
+
+
+  tasks:
+    - name: Change AMD SourceList
+      template:
+        backup: yes
+        src: template/ubuntu_amd_source.list.j2
+        dest: /etc/apt/sources.list
+      when: ansible_architecture == "x86_64"
+
+    - name: Change ARM SourceList
+      template:
+        backup: yes
+        src: template/ubuntu_arm_source.list.j2
+        dest: /etc/apt/sources.list
+      when: ansible_architecture == "aarch64"
+
+    - name: apt-get update
+      apt:
+        force_apt_get: yes
+        update_cache: yes
+

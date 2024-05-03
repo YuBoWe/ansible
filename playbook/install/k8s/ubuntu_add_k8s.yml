@@ -1,0 +1,30 @@
+---
+- hosts: k8sworker
+  remote_user: root
+  gather_facts: yes
+  vars_files:
+    - vars/vars.yml
+
+  tasks:
+    - name: set hostname
+      hostname:
+        name: "node.{{ ansible_default_ipv4.address }}"
+    - name: copy initfile
+      copy:
+        src: tmp/init.txt
+        dest: /tmp/init.txt
+    - name: get token
+      shell: egrep -o "\-\-token\s(\S+)" /tmp/init.txt | head -n1
+      register: token
+    - name: get cahash
+      shell: egrep -o '\-\-discovery-token-ca-cert-hash\s+[a-z0-9:]+' /tmp/init.txt | head -n1
+      register: cahash
+    - name: get control-plane
+      shell: egrep -o '\-\-control-plane\s+--certificate-key\s+\S+' /tmp/init.txt
+      register: cp
+    - name: master add k8s
+      shell: kubeadm join apiserver.k8s.com:6443 {{{ tokem.stdout }}} {{{ cahash.stdout }}} {{{ cp.stdout }}} --cri-socket unix:///var/run/cri-dockerd.sock
+      when: ansible_fqdn is match("master*")
+    - name: worker add k8s
+      shell: "kubeadm join apiserver.k8s.com:6443 {{ token.stdout }} {{ cahash.stdout }} {{ cp.stdout }} --cri-socket unix:///var/run/cri-dockerd.sock"
+      when: ansible_fqdn is match("node*")

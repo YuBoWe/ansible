@@ -1,0 +1,55 @@
+---
+- hosts: 10.0.0.13
+  remote_user: root
+  gather_facts: yes
+  vars:
+    bigVersion: "6.0"
+    mongoVersion: "{{ bigVersion }}.13"
+
+  tasks:
+    - name: install prepare packages
+      apt:
+        force_apt_get: yes
+        update_cache: yes
+        pkg:
+        - gnupg
+        - curl
+        state: present
+
+    - name: Add an Apt signing key
+      apt_key:
+        url: https://www.mongodb.org/static/pgp/server-{{ bigVersion }}.asc
+        keyring: /tmp/mongodb-server-{{ bigVersion }}.gpg
+        state: present
+
+    - name: set apt repo
+      apt_repository:
+        repo: deb [ arch=amd64,arm64 signed-by=/tmp/mongodb-server-{{ bigVersion }}.gpg ] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/{{ bigVersion }} multiverse
+        state: present
+        filename: mongodb-{{ bigVersion }}
+
+    - name: update apt repo
+      apt:
+        force_apt_get: yes
+        update_cache: yes
+        pkg:
+        - mongodb-org={{ mongoVersion }}
+        - mongodb-org-database={{ mongoVersion }}
+        - mongodb-org-server={{ mongoVersion }}
+        - mongodb-org-mongos={{ mongoVersion }}
+        - mongodb-org-tools={{ mongoVersion }}
+        state: present
+
+    - name: change bindIP 0.0.0.0
+      replace:
+        path: /etc/mongod.conf
+        regexp: '(bindIp:).*'
+        replace: '\1 0.0.0.0'
+        backup: yes
+
+    - name: start
+      service:
+        name: mongod
+        state: restarted
+        enabled: yes
+

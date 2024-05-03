@@ -1,0 +1,37 @@
+---
+- hosts: 10.0.0.11
+  remote_user: root
+  gather_facts: yes
+  vars: 
+    Domain: k8s
+
+  tasks:
+    - name: insetall bind9
+      apt:
+        force_apt_get: yes
+        update_cache: yes
+        pkg:
+        - bind9
+        - bind9-host
+        - dnsutils
+        - bind9-doc
+        state: present
+    - name: mkdir {{ Domain }} Dir
+      file:
+        path: "/etc/bind/{{ Domain }}"
+        state: directory
+    - name: "{{ Domain }} Config"
+      template:
+        src: "template/{{ Domain }}.com.j2"
+        dest: "/etc/bind/{{ Domain }}/{{ Domain }}.com"
+    - name: Zone Config
+      template:
+        backup: yes
+        src: template/named.conf.local.j2
+        dest: /etc/bind/named.conf.local
+    - name: check conf
+      shell: "named-checkzone {{ Domain }}.com /etc/bind/{{ Domain }}/{{ Domain }}.com && named-checkconf /etc/bind/named.conf.local"
+    - name: restart bind
+      service:
+        name: bind9
+        state: restarted

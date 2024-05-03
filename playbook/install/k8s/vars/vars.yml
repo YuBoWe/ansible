@@ -1,0 +1,14 @@
+dockerVersion: 5:25.0.1-1~ubuntu.22.04~{{ ansible_distribution_release }}
+registryMirrors: https://nwq0ev38.mirror.aliyun.com
+criDockerdVersion: 0.3.10
+criDockerdDir: /apps
+kubeVersion: 1.28.2
+calicoVersion: v3.26.4
+# https://raw.githubusercontent.com/projectcalico/calico/v3.26.4/manifests/calico.yaml
+image_repo: "registry.aliyuncs.com/google_containers"
+pod_cidr: "192.168.0.0/16"
+service_cidr: "10.96.0.0/12"
+tunnel_protocol: "IPIP"
+mode: "tunneling"
+pod_cidr_block_size: "24"
+node_ip: 10.0.0.12

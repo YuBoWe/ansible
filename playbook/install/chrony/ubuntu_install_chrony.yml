@@ -1,0 +1,25 @@
+---
+- hosts: 10.0.0.11
+  remote_user: root
+  gather_facts: yes
+  vars:
+    aliyun1: ntp1.aliyun.com
+    aliyun2: ntp2.aliyun.com
+    aliyun3: ntp3.aliyun.com
+    net: 10.0.0.0/24
+
+  tasks:
+    - name: install-chrony
+      apt:
+        force_apt_get: yes
+        update_cache: yes
+        name: chrony
+        state: present
+    - name: 配置时间同步服务
+      template: 
+        src: template/chrony.conf.j2
+        dest: /etc/chrony/chrony.conf
+    - name: 重启时间同步服务
+      systemd:
+        name: chrony
+        state: restarted

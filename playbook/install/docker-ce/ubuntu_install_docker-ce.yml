@@ -1,0 +1,79 @@
+---
+- hosts: 10.0.0.13
+  remote_user: root
+  gather_facts: yes
+  vars_files:
+    - vars/vars.yml
+  tasks:
+  # 安装docker-ce
+    - name: remove old docker-ce
+      apt:
+        force_apt_get: yes
+        pkg:
+        - docker-ce
+        - docker
+        - docker-engine
+        - docker.io
+        state: absent
+    - name: remove old gpgfile
+      file:
+        path: /tmp/docker-ce.gpg
+        state: absent
+    - name: install docker depend package
+      apt:
+        force_apt_get: yes
+        update_cache: yes
+        pkg:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg2
+        - software-properties-common
+        state: present
+    - name: get Docker's GPG keys
+      get_url:
+        url: https://mirrors.huaweicloud.com/docker-ce/linux/ubuntu/gpg
+        dest: /tmp/docker-ce.gpg
+    - name: add Docker's GPG keys
+      apt_key:
+        file: /tmp/docker-ce.gpg
+        state: present
+    - name: ubuntu/amd add huawei docker-ce mirror
+      apt_repository:
+        repo: deb [arch=amd64] https://mirrors.huaweicloud.com/docker-ce/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+        filename: docker-ce.list
+      when: ansible_architecture == "x86_64"
+    - name: ubuntu/arm add huawei docker-ce mirror
+      apt_repository:
+        repo: deb [arch=armhf] https://mirrors.huaweicloud.com/docker-ce/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+        filename: docker-ce.list
+      when: ansible_architecture == "aarch64"
+    - name: install docker-ce
+      apt:
+        force_apt_get: yes
+        update_cache: yes
+        name: docker-ce={{ dockerVersion }}
+    - name: Create apps dir
+      file:
+        path: /apps
+        state: directory
+    - name: turn down swap
+      shell: swapoff -a && sed -ri '/swap/s/^/#/' /etc/fstab
+    - name: turn down ufw
+      shell: ufw disable
+      ignore_errors: yes
+    - name: config docker
+      template:
+        src: templates/daemon.json.j2
+        dest: /etc/docker/daemon.json
+    - name: reload docker
+      service:
+        daemon_reload: true
+    - name: restart docker
+      service:
+        name: docker
+        state: restarted
+        enabled: true
+

@@ -1,0 +1,22 @@
+---
+- hosts: k8s
+  remote_user: root
+  gather_facts: yes
+  vars:
+    server: 10.0.0.11
+
+  tasks:
+    - name: install-chrony
+      apt:
+        force_apt_get: yes
+        update_cache: yes
+        name: chrony
+        state: present
+    - name: 配置时间同步服务
+      template: 
+        src: template/chrony_client.conf.j2
+        dest: /etc/chrony/chrony.conf
+    - name: 重启时间同步服务
+      systemd:
+        name: chrony
+        state: restarted

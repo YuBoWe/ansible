@@ -1,0 +1,9 @@
+{
+"registry-mirrors": ["{{ registryMirrors }}"],
+"exec-opts": ["native.cgroupdriver=systemd"],
+"log-driver": "json-file",
+"log-opts": {
+  "max-size": "200m"
+},
+"storage-driver": "overlay2"
+}

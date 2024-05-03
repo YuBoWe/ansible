@@ -1,0 +1,2 @@
+dockerVersion: 5:25.0.1-1~ubuntu.22.04~{{ ansible_distribution_release }
+

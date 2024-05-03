@@ -1,0 +1,12 @@
+---
+- hosts: amd
+  remote_user: root
+  gather_facts: no
+  vars:
+    SRCFILE: /apps/cri-dockerd-0.3.10.amd64.tgz
+    DSTFILE: /apps/cri-dockerd-0.3.10.tgz
+  tasks:
+    - name: copy
+      copy:
+        src: "{{ SRCFILE }}"
+        dest: "{{ DSTFILE }}"

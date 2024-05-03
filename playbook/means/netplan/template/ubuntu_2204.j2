@@ -1,0 +1,14 @@
+network:
+  ethernets:
+    {{ ansible_default_ipv4.interface }}:
+      addresses:
+      - {{ ip.stdout }}
+      nameservers:
+        addresses:
+        - {{ dns }}
+        - 114.114.114.114
+        search: []
+      routes:
+      - to: default
+        via: {{ gateway }}
+  version: 2
