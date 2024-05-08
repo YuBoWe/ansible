@@ -1,4 +1,5 @@
-[Service]
-Environment="HTTP_PROXY=10.0.0.1:7890"
-Environment="HTTPS_PROXY=10.0.0.1:7890"
-Environment="NO_PROXY=localhost, 127.0.0.1, {{ pod_cidr }}, {{ service_cidr }}, {{ local_cidr }}"
+PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
+
+http_proxy="http://{{ proxy_ip }}:{{ proxy_port }}/"
+https_proxy="http://{{ proxy_ip }}:{{ proxy_port }}/"
+no_prxoy="127.0.0.1,localhost,10.0.0.0/24,{{ pod_cidr }},{{ service_cidr }}"

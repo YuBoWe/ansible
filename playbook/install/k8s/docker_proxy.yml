@@ -1,0 +1,25 @@
+---
+- hosts: k8s
+  remote_user: root
+  gather_facts: yes
+  vars:
+    pod_cidr: "192.168.0.0/16"
+    service_cidr: "10.96.0.0/12"
+    local_cidr: "10.0.0.0/24"
+    local: "127.0.0.1"
+
+  tasks:
+  - name: mkdir
+    file:
+      path: /etc/systemd/system/docker.service.d/
+      state: directory
+  - name: set proxy
+    template:
+      src: templates/proxy.j2
+      dest: /etc/systemd/system/docker.service.d/docker_proxy.conf
+
+  - name: restarted dockerd
+    systemd:
+      name: docker
+      state: restarted
+      daemon_reload: yes

@@ -1,0 +1,4 @@
+[Service]
+Environment="HTTP_PROXY=10.0.0.1:7890"
+Environment="HTTPS_PROXY=10.0.0.1:7890"
+Environment="NO_PROXY=localhost, 127.0.0.1, {{ pod_cidr }}, {{ service_cidr }}, {{ local_cidr }}"
