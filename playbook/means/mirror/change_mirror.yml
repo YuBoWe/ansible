@@ -1,5 +1,5 @@
 ---
-- hosts: 10.0.0.13 # amd
+- hosts: 10.0.0.11 # amd
   remote_user: root
   gather_facts: yes
   vars:
@@ -7,7 +7,8 @@
     # mirrors.tuna.tsinghua.edu.cn
     # mirrors.tencent.com
     # mirrors.huaweicloud.com
-    URL: mirrors.tencent.com
+    # mirror.nyist.edu.cn
+    URL: mirror.nyist.edu.cn
 
 
   tasks:
